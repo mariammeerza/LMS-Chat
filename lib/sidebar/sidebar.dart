@@ -22,7 +22,7 @@ class _SideBarState extends State<SideBar> {
   Widget build(BuildContext context) {
     return Container(
       height: 700,
-      width: 250, // Set the height of the sidebar to occupy the full height of the screen
+      width: 200, // Set the height of the sidebar to occupy the full height of the screen
       decoration: const BoxDecoration(
         color: Color(0xFFCDE9C8), // Set the background color of the sidebar
         borderRadius: BorderRadius.only(

@@ -1,6 +1,12 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+// import 'package:flutter_application_1/function.dart';
 import 'package:flutter_application_1/sidebar/sidebar.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+// import 'package:flutter_application_1/function.dart';
 
 void main() {
   runApp(ChatGPTApp());
@@ -95,8 +101,7 @@ class _ChatScreenState extends State<ChatScreen> {
               top: 150,
               left: 850,
               child: ChatBubble(
-                text:
-                    "Could you clarify the correct usage of it's and its?",
+                text: "Could you clarify the correct usage of it's and its?",
                 isCurrentUser: false,
                 borderColor: Colors.black,
                 isAITutorMessage: true,
@@ -163,51 +168,45 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildTextComposer() {
-    return RawKeyboardListener(
-      focusNode: FocusNode(),
-      onKey: (RawKeyEvent event) {
-        if (event is RawKeyDownEvent &&
-            event.logicalKey == LogicalKeyboardKey.enter) {
-          sendMessage(_textController.text);
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(300,10,500,0), // Adjusted padding
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.black),
-          borderRadius: BorderRadius.circular(50.0),
-        ),
-        child: Stack(
-          children: <Widget>[
-            Expanded(
-              child: TextField(
-                controller: _textController,
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  hintText: 'Send a message',
-                ),
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.mic),
-              onPressed: () {
-                null;
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.send),
-              onPressed: () {
-                sendMessage(_textController.text);
-              },
-            ),
-          ],
-        ),
+ Widget _buildTextComposer() {
+  return Padding(
+    padding: const EdgeInsets.only(left: 260, right: 30),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(50),
+        border: Border.all(color: Colors.black),
       ),
-    );
-  }
-
-  void sendMessage(String message) {
+      child: Row(
+        children: [
+          Flexible(
+            child: TextField(
+              controller: _textController,
+              decoration: const InputDecoration(
+                hintText: 'Send a message',
+                border: InputBorder.none,
+              ),
+              onSubmitted: (text) {
+                sendMessage(text);
+              },
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.mic),
+            onPressed: () {
+              // Add functionality for microphone button
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.send),
+            onPressed: () => sendMessage(_textController.text),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+  void sendMessage(String message) async {
     if (message.isNotEmpty) {
       setState(() {
         _messages.insert(
@@ -219,24 +218,138 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       });
       _textController.clear();
-      _addEchoMessage(message);
+
+      final response = await http.get(
+        Uri.parse('http://127.0.0.1:5000/query?query=${message}'),
+        headers: {'Content-Type': 'application/json'},
+        // body: json.encode({'query': message}),
+      );
+
+      if (response.statusCode == 200) {
+        print("Error: ${response.body}");
+        final responseData = json.decode(response.body);
+        if (responseData.containsKey('response')) {
+          _addEchoMessage(responseData['response']);
+        } else {
+          print("The API response does not contain the key 'response'.");
+        }
+      } else {
+        print("Error: ${response.body}");
+      }
     }
   }
 
-  void _addEchoMessage(String text) {
-    Future.delayed(const Duration(seconds: 1), () {
-      setState(() {
-        _messages.insert(
-          0,
-          ChatMessage(
-            text: text,
-            isSentByUser: false,
-          ),
-        );
-      });
+  // void sendMessage(String message) async {
+  //   if (message.isNotEmpty) {
+  //     setState(() {
+  //       _messages.insert(
+  //         0,
+  //         ChatMessage(
+  //           text: message,
+  //           isSentByUser: true,
+  //         ),
+  //       );
+  //     });
+  //     _textController.clear();
+  //     // http.Client() getClient{
+  //     //   return http.Client();
+  //     // }
+
+  //     // Send the message to the Python API
+  //     final response = await http.post(
+  //       Uri.parse('http://127.0.0.1:5000/query'), // Adjust the URL if necessary
+  //       headers: {'Content-Type': 'application/json'},
+  //       body: json.encode({'query': message}),
+  //     );
+
+  //     // Decode the response and add it to the chat
+  //     final responseData = json.decode(response.body);
+  //     if (responseData.containsKey('response')) {
+  //       // Use 'response' as the key
+  //       _addEchoMessage(
+  //           responseData['response']); // Use the response from the API
+  //     } else {
+  //       print("The API response does not contain the key 'response'.");
+  //     }
+  //   }
+  // }
+
+  void _addEchoMessage(String message) {
+    setState(() {
+      _messages.insert(
+        0,
+        ChatMessage(
+          text: message,
+          isSentByUser: false,
+        ),
+      );
     });
   }
 }
+
+// void sendMessage(String message) async {
+//   if (message.isNotEmpty) {
+//     setState(() {
+//       _messages.insert(
+//         0,
+//         ChatMessage(
+//           text: message,
+//           isSentByUser: true,
+//         ),
+//       );
+//     });
+//     _textController.clear();
+
+//     // Send the message to the Python API
+//     final response = await http.post(
+//       Uri.parse('http://localhost:5000/chat'), // Adjust the URL if necessary
+//       headers: {'Content-Type': 'application/json'},
+//       body: json.encode({'message': message}),
+//     );
+//     _textController.clear();
+//     _addEchoMessage('response');
+//   }
+// }
+// void sendMessage(String message) async {
+//   if (message.isNotEmpty) {
+//     setState(() {
+//       _messages.insert(
+//         0,
+//         ChatMessage(
+//           text: message,
+//           isSentByUser: true,
+//         ),
+//       );
+//     });
+//     _textController.clear();
+
+//     // Send the message to the Python API
+//     final response = await http.post(
+//       Uri.parse('http://localhost:5000/chat'),  // Adjust the URL if necessary
+//       headers: {'Content-Type': 'application/json'},
+//       body: json.encode({'message': message}),
+//     );
+
+//     // Decode the response and add it to the chat
+//     final responseData = json.decode(response.body);
+//     _addEchoMessage(responseData['response']);
+//   }
+// }
+
+//   void _addEchoMessage(String text) {
+//     Future.delayed(const Duration(seconds: 1), () {
+//       setState(() {
+//         _messages.insert(
+//           0,
+//           ChatMessage(
+//             text: text,
+//             isSentByUser: false,
+//           ),
+//         );
+//       });
+//     });
+//   }
+// }
 
 class ChatBubble extends StatelessWidget {
   final String text;
@@ -407,3 +520,4 @@ class ChatMessage {
 
   ChatMessage({required this.text, required this.isSentByUser});
 }
+
